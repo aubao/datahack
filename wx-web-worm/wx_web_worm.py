@@ -12,23 +12,26 @@ import re
 from selenium import webdriver
 import pandas as pd
 import time
+import numpy as np
 haved = pd.read_csv('d:\wx.csv')
 
 chromedriver = "D:\Anaconda2\Scripts\chromedriver.exe"
 driver = webdriver.Chrome(chromedriver)
 driver.get("http://weixin.sogou.com/")
 driver.find_element_by_id("loginBtn").click()
-driver.find_element_by_id("query").send_keys("育儿")
+driver.find_element_by_id("query").send_keys("教育")
 driver.find_element_by_class_name("swz2").click()
-#driver.find_element_by_class_name("code").click()
-qrcode = [] 
-url = []
-update_time = []
-wx = {} 
-#the num of article every month
-#for x in bs.find_all(class_="info"):
-    #print(re.findall(r"</span>(.+?)</p>",str(x)))
+driver.find_element_by_class_name("qreset2").click()
 
+wx = {}
+def get_wx_id(key):
+    wx_ids = []
+    bs = BeautifulSoup(driver.page_source, "lxml")
+    for wx_id in bs.find_all('label'):
+        wx_ids.extend(wx_id.contents)
+    wx[key] = wx_ids
+
+        
 def getHtml(url):
     cj = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
@@ -85,40 +88,30 @@ def save_img(img_name,url):
     with open(str(img_name)+'.png', 'wb') as f:
         f.write(image.read())
 
-def write_xlsx():
-    book = xlsxwriter.Workbook('pict1.xlsx')
-    sheet = book.add_worksheet('demo')
-    sheet.write('A1', '微信公众号名称')
-    sheet.write('B1', '微信公众号ID')
-    sheet.write('C1', '微信公众号描述')
-    sheet.write('D1', '二维码')
-    #sheet.write('E1', '二维码地址')
-    i = 2
-    for k,v in wx.items():
-        if k not in list(haved.name):
-            sheet.write('A'+str(i),k)
-            sheet.write('B'+str(i), v[0])
-            sheet.write('C'+str(i), v[1])
-            sheet.write('E'+str(i), v[2])
-            #sheet.insert_image('D'+str(i),k+'.png',{'x_scale': 0.25, 'y_scale': 0.25})
-            i += 1
-        else:
-            print(k)
+def write_xlsx(search_key):
+    book = xlsxwriter.Workbook('公众号id.xlsx')
+    sheet = book.add_worksheet(search_key)
+    sheet.write('A1', '微信公众号ID')
+    for i,k in enumerate(wx[search_key]):
+            sheet.write('A'+str(i+2),k)
+            print(i,k)
     book.close()
 
-def get_all_urls():
+def get_all():
     flag = True
     while flag:
-        get_url(url)
+        get_wx_id()
         try:
             driver.find_element_by_id("sogou_next").click()
-            time.sleep(10)    
+            time.sleep(np.random.randint(15,30))
         except:
             flag = False
-def run(no):
-    i = no
-    for link in url[no:]:
-        print (i)
-        get_wx(link)
-        time.sleep(10)
-        i += 1
+def run():
+    query_key=['快乐宝贝','快乐儿童','快乐英语']
+    for key in query_key:
+        driver.get("http://weixin.sogou.com/")
+        driver.find_element_by_id("query").send_keys(key)
+        driver.find_element_by_class_name("swz2").click()
+        get_all()
+        write_xlsx(key)
+
